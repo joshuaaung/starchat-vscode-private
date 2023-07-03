@@ -346,23 +346,24 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
         : BASE_URL;
       console.log("sending to " + endpointToUse);
 
-      try {
-        // HFInference
-        let temp_response = "";
-
-        for await (const output of this._chatGPTAPI.textGenerationStream(
-          {
-            model: endpointToUse,
-            inputs: this._fullPrompt,
-            parameters: {
-              max_new_tokens: this._settings.maxNewTokens,
-              temperature: this._settings.temperature,
-              top_k: this._settings.topK,
-              top_p: this._settings.topP,
-            },
+      // HFInference
+      let temp_response = "";
+      let hfTextAsyncGenerator = this._chatGPTAPI.textGenerationStream(
+        {
+          model: endpointToUse,
+          inputs: this._fullPrompt,
+          parameters: {
+            max_new_tokens: this._settings.maxNewTokens,
+            temperature: this._settings.temperature,
+            top_k: this._settings.topK,
+            top_p: this._settings.topP,
           },
-          { fetch: fetch }
-        )) {
+        },
+        { fetch: fetch }
+      );
+      while (true) {
+        try {
+          let { value: output, done } = await hfTextAsyncGenerator.next();
           if (this._view && this._view.visible) {
             if (output.token.text === "<|end|>") {
               break;
@@ -373,15 +374,53 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
               value: temp_response,
             });
           }
-        }
-        response = temp_response;
-      } catch (e: any) {
-        console.error(e);
-        if (this._currentMessageNumber === currentMessageNumber) {
-          response = this._response;
-          response += `\n\n---\n[ERROR] ${e}`;
+          if (done) break;
+        } catch (e: any) {
+          if (this._currentMessageNumber === currentMessageNumber) {
+            response = this._response;
+            response += `\n\n---\n[ERROR] ${e}`;
+          }
+          break;
         }
       }
+      response = temp_response;
+      //   try {
+      //     // HFInference
+      //     let temp_response = "";
+
+      //     for await (const output of this._chatGPTAPI.textGenerationStream(
+      //       {
+      //         model: endpointToUse,
+      //         inputs: this._fullPrompt,
+      //         parameters: {
+      //           max_new_tokens: this._settings.maxNewTokens,
+      //           temperature: this._settings.temperature,
+      //           top_k: this._settings.topK,
+      //           top_p: this._settings.topP,
+      //         },
+      //       },
+      //       { fetch: fetch }
+      //     )) {
+      //       if (this._view && this._view.visible) {
+      //         if (output.token.text === "<|end|>") {
+      //           break;
+      //         }
+      //         temp_response += output.token.text;
+      //         this._view?.webview.postMessage({
+      //           type: "addResponse",
+      //           value: temp_response,
+      //         });
+      //       }
+      //     }
+      //     response = temp_response;
+      //   } catch (e: any) {
+      //     console.log("here1");
+      //     console.error(e);
+      //     if (this._currentMessageNumber === currentMessageNumber) {
+      //       response = this._response;
+      //       response += `\n\n---\n[ERROR] ${e}`;
+      //     }
+      //   }
     }
 
     if (this._currentMessageNumber !== currentMessageNumber) {
