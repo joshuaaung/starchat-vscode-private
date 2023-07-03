@@ -1,290 +1,433 @@
-import * as vscode from 'vscode';
-import { HfInference } from '@huggingface/inference';
-const fetch = require('node-fetch-polyfill');
-
+import * as vscode from "vscode";
+import { HfInference } from "@huggingface/inference";
+const fetch = require("node-fetch-polyfill");
 
 type AuthInfo = { apiKey?: string };
-type Settings = { 
-	apiUrl?: string,
-	maxNewTokens?: number,
-	temperature?: number,
-	topK?: number,
-	topP?: number
+type ApiURL = {
+  explain?: string;
+  refactor?: string;
+  findProblems?: string;
+  optimize?: string;
+  documentation?: string;
+};
+type Settings = {
+  apiUrl?: ApiURL;
+  maxNewTokens?: number;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
 };
 
+const BASE_URL =
+  "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta";
 
-const BASE_URL = 'https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta';
-
+// The number of OPERATION_COUNT should match the keys in the type ApiURL count. Meaning one api endpoint per operation
+const OPERATION_COUNT = 5;
 
 export function activate(context: vscode.ExtensionContext) {
+  console.log('activating extension "chatgpt"');
+  // Get the settings from the extension's configuration
+  const config = vscode.workspace.getConfiguration("starchat");
 
-	console.log('activating extension "chatgpt"');
-	// Get the settings from the extension's configuration
-	const config = vscode.workspace.getConfiguration('starchat');
+  console.log(config);
 
-	// Create a new TextGenerationViewProvider instance and register it with the extension's context
-	const provider = new TextGenerationViewProvider(context.extensionUri);
+  // Create a new TextGenerationViewProvider instance and register it with the extension's context
+  const provider = new TextGenerationViewProvider(context.extensionUri);
 
-	// Put configuration settings into the provider
-	provider.setAuthenticationInfo({
-		apiKey: config.get('apiKey')
-	});
-	provider.setSettings({
-		apiUrl: config.get('apiUrl') || BASE_URL,
-		maxNewTokens: config.get('maxNewTokens') || 1024,
-		temperature: config.get('temperature') || 0.2,
-		topK: config.get('topK') || 50,
-		topP: config.get('topP') || 0.95
-	});
+  // Put configuration settings into the provider
+  provider.setAuthenticationInfo({
+    apiKey: config.get("apiKey"),
+  });
+  provider.setSettings({
+    apiUrl: {
+      explain: config.get("apiUrl.explain") || BASE_URL,
+      refactor: config.get("apiUrl.refactor") || BASE_URL,
+      findProblems: config.get("apiUrl.findProblems") || BASE_URL,
+      optimize: config.get("apiUrl.optimize") || BASE_URL,
+      documentation: config.get("apiUrl.documentation") || BASE_URL,
+    },
+    maxNewTokens: config.get("maxNewTokens") || 1024,
+    temperature: config.get("temperature") || 0.2,
+    topK: config.get("topK") || 50,
+    topP: config.get("topP") || 0.95,
+  });
 
-	// Register the provider with the extension's context
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(TextGenerationViewProvider.viewType, provider, {
-			webviewOptions: { retainContextWhenHidden: true }
-		})
-	);
+  // Register the provider with the extension's context
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      TextGenerationViewProvider.viewType,
+      provider,
+      {
+        webviewOptions: { retainContextWhenHidden: true },
+      }
+    )
+  );
 
-	const commandHandler = (command: string) => {
-		const config = vscode.workspace.getConfiguration('starchat');
-		const prompt = config.get(command) as string;
-		provider.search(prompt);
-	};
+  const commandHandler = (command: string) => {
+    const config = vscode.workspace.getConfiguration("starchat");
+    const prompt = config.get(command) as string;
+    provider.search(prompt, command);
+  };
 
-	// Register the commands that can be called from the extension's package.json
-	context.subscriptions.push(
-		vscode.commands.registerCommand('chatgpt.explain', () => commandHandler('promptPrefix.explain')),
-		vscode.commands.registerCommand('chatgpt.refactor', () => commandHandler('promptPrefix.refactor')),
-		vscode.commands.registerCommand('chatgpt.optimize', () => commandHandler('promptPrefix.optimize')),
-		vscode.commands.registerCommand('chatgpt.findProblems', () => commandHandler('promptPrefix.findProblems')),
-		vscode.commands.registerCommand('chatgpt.documentation', () => commandHandler('promptPrefix.documentation')),
-	);
+  // Register the commands that can be called from the extension's package.json
+  context.subscriptions.push(
+    vscode.commands.registerCommand("chatgpt.explain", () =>
+      commandHandler("promptPrefix.explain")
+    ),
+    vscode.commands.registerCommand("chatgpt.refactor", () =>
+      commandHandler("promptPrefix.refactor")
+    ),
+    vscode.commands.registerCommand("chatgpt.optimize", () =>
+      commandHandler("promptPrefix.optimize")
+    ),
+    vscode.commands.registerCommand("chatgpt.findProblems", () =>
+      commandHandler("promptPrefix.findProblems")
+    ),
+    vscode.commands.registerCommand("chatgpt.documentation", () =>
+      commandHandler("promptPrefix.documentation")
+    )
+  );
 
-	// Change the extension's session token or settings when configuration is changed
-	vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
-		if (event.affectsConfiguration('starchat.apiKey')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			provider.setAuthenticationInfo({ apiKey: config.get('apiKey') });
-		} else if (event.affectsConfiguration('starchat.apiUrl')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			let url = config.get('apiUrl') as string || BASE_URL;
-			provider.setSettings({ apiUrl: url });
-		} else if (event.affectsConfiguration('starchat.maxNewTokens')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			provider.setSettings({ maxNewTokens: config.get('maxNewTokens') });
-		} else if (event.affectsConfiguration('starchat.temperature')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			provider.setSettings({ temperature: config.get('temperature') });
-		} else if (event.affectsConfiguration('starchat.topK')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			provider.setSettings({ topK: config.get('topK') });
-		} else if (event.affectsConfiguration('starchat.topP')) {
-			const config = vscode.workspace.getConfiguration('starchat');
-			provider.setSettings({ topP: config.get('topP') });
-		}
-	});
+  // Change the extension's session token or settings when configuration is changed
+  vscode.workspace.onDidChangeConfiguration(
+    (event: vscode.ConfigurationChangeEvent) => {
+      if (event.affectsConfiguration("starchat.apiKey")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        provider.setAuthenticationInfo({ apiKey: config.get("apiKey") });
+      } else if (event.affectsConfiguration("starchat.apiUrl.explain")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        let url = config.get("apiUrl.explain") as string; // || BASE_URL;
+        provider.setSettings({ apiUrl: { explain: url } });
+      } else if (event.affectsConfiguration("starchat.apiUrl.refactor")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        let url = config.get("apiUrl.refactor") as string; // || BASE_URL;
+        provider.setSettings({ apiUrl: { refactor: url } });
+      } else if (event.affectsConfiguration("starchat.apiUrl.findProblems")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        let url = config.get("apiUrl.findProblems") as string; // || BASE_URL;
+        provider.setSettings({ apiUrl: { findProblems: url } });
+      } else if (event.affectsConfiguration("starchat.apiUrl.optimize")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        let url = config.get("apiUrl.optimize") as string; // || BASE_URL;
+        provider.setSettings({ apiUrl: { optimize: url } });
+      } else if (event.affectsConfiguration("starchat.apiUrl.documentation")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        let url = config.get("apiUrl.documentation") as string; // || BASE_URL;
+        provider.setSettings({ apiUrl: { documentation: url } });
+      } else if (event.affectsConfiguration("starchat.maxNewTokens")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        provider.setSettings({ maxNewTokens: config.get("maxNewTokens") });
+      } else if (event.affectsConfiguration("starchat.temperature")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        provider.setSettings({ temperature: config.get("temperature") });
+      } else if (event.affectsConfiguration("starchat.topK")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        provider.setSettings({ topK: config.get("topK") });
+      } else if (event.affectsConfiguration("starchat.topP")) {
+        const config = vscode.workspace.getConfiguration("starchat");
+        provider.setSettings({ topP: config.get("topP") });
+      }
+    }
+  );
 }
 
-
 class TextGenerationViewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'chatgpt.chatView';
-	private _view?: vscode.WebviewView;
-	private _chatGPTAPI?: HfInference;
+  public static readonly viewType = "chatgpt.chatView";
+  private _view?: vscode.WebviewView;
+  private _chatGPTAPI?: HfInference;
 
-	private _response?: string;
-	private _prompt?: string;
-	private _fullPrompt?: string;
-	private _currentMessageNumber = 0;
+  private _response?: string;
+  private _prompt?: string;
+  private _fullPrompt?: string;
+  private _currentMessageNumber = 0;
 
-	private _settings: Settings = {
-		apiUrl: BASE_URL,
-		maxNewTokens: 1024,
-		temperature: 0.2,
-		topK: 50,
-		topP: 0.95
-	};
+  private _settings: Settings = {
+    apiUrl: {
+      explain: BASE_URL,
+      refactor: BASE_URL,
+      findProblems: BASE_URL,
+      optimize: BASE_URL,
+      documentation: BASE_URL,
+    },
+    maxNewTokens: 1024,
+    temperature: 0.2,
+    topK: 50,
+    topP: 0.95,
+  };
 
-	private _authInfo?: AuthInfo;
+  private _authInfo?: AuthInfo;
 
-	// In the constructor, we store the URI of the extension
-	constructor(private readonly _extensionUri: vscode.Uri) {
+  // In the constructor, we store the URI of the extension
+  constructor(private readonly _extensionUri: vscode.Uri) {}
 
-	}
+  // Set the API key and create a new API instance based on this key
+  public setAuthenticationInfo(authInfo: AuthInfo) {
+    this._authInfo = authInfo;
+    this._newAPI();
+  }
 
-	// Set the API key and create a new API instance based on this key
-	public setAuthenticationInfo(authInfo: AuthInfo) {
-		this._authInfo = authInfo;
-		this._newAPI();
-	}
+  public setSettings(settings: Settings) {
+    let changeModel = false;
+    if (settings.apiUrl) {
+      changeModel = true;
+      this._settings.apiUrl = { ...this._settings.apiUrl, ...settings.apiUrl };
+    } else {
+      this._settings = { ...this._settings, ...settings };
+    }
 
-	public setSettings(settings: Settings) {
-		let changeModel = false;
-		if (settings.apiUrl) {
-			changeModel = true;
-		}
-		this._settings = { ...this._settings, ...settings };
+    if (changeModel) {
+      this._newAPI();
+    }
+  }
 
-		if (changeModel) {
-			this._newAPI();
-		}
-	}
+  public getSettings() {
+    return this._settings;
+  }
 
-	public getSettings() {
-		return this._settings;
-	}
+  private _isApiUrlValid(apiUrl: ApiURL | undefined): boolean {
+    if (!apiUrl) {
+      return false; // Object is undefined
+    }
 
-	// This private method initializes a new ChatGPTAPI instance
-	private _newAPI() {
-		if (!this._authInfo || !this._settings?.apiUrl) {
-			console.warn("API key or API URL not set, please go to extension settings (read README.md for more info)");
-		}
-		else {
-			console.log("api key is", this._authInfo.apiKey);
-			this._chatGPTAPI = new HfInference(this._authInfo.apiKey || "xx");
-		}
-	}
+    const expectedKeysCount = OPERATION_COUNT;
+    const actualKeys = Object.keys(apiUrl);
 
-	public resolveWebviewView(
-		webviewView: vscode.WebviewView,
-		context: vscode.WebviewViewResolveContext,
-		_token: vscode.CancellationToken,
-	) {
-		this._view = webviewView;
+    if (actualKeys.length !== expectedKeysCount) {
+      return false; // Object does not have all the keys
+    }
 
-		// set options for the webview, allow scripts
-		webviewView.webview.options = {
-			enableScripts: true,
-			localResourceRoots: [
-				this._extensionUri
-			]
-		};
+    for (const key of actualKeys) {
+      const value = apiUrl[key as keyof ApiURL];
 
-		// set the HTML for the webview
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+      if (value === null || value === undefined || value.trim() === "") {
+        return false; // Value is null, undefined, or empty
+      }
+    }
 
-		// add an event listener for messages received by the webview
-		webviewView.webview.onDidReceiveMessage(data => {
-			switch (data.type) {
-				case 'codeSelected':
-					{
-						let code = data.value;
-						const snippet = new vscode.SnippetString();
-						snippet.appendText(code);
-						// insert the code as a snippet into the active text editor
-						vscode.window.activeTextEditor?.insertSnippet(snippet);
-						break;
-					}
-				case 'prompt':
-					{
-						this.search(data.value);
-					}
-			}
-		});
-	}
+    return true; // All keys have valid values
+  }
 
-	public async search(prompt?: string) {
-		this._prompt = prompt;
-		if (!prompt) {
-			prompt = '';
-		};
+  private _getOperationEndpoint(command: string): string {
+    const config = vscode.workspace.getConfiguration("starchat");
 
-		// Check if the ChatGPTAPI instance is defined
-		if (!this._chatGPTAPI) {
-			this._newAPI();
-		}
+    let endpoint = "";
 
-		// focus gpt activity from activity bar
-		if (!this._view) {
-			await vscode.commands.executeCommand('chatgpt.chatView.focus');
-		} else {
-			this._view?.show?.(true);
-		}
+    switch (command) {
+      case "promptPrefix.explain":
+        endpoint = config.get("apiUrl.explain") as string;
+        break;
+      case "promptPrefix.refactor":
+        endpoint = config.get("apiUrl.refactor") as string;
+        break;
+      case "promptPrefix.findProblems":
+        endpoint = config.get("apiUrl.findProblems") as string;
+        break;
+      case "promptPrefix.optimize":
+        endpoint = config.get("apiUrl.optimize") as string;
+        break;
+      case "promptPrefix.documentation":
+        endpoint = config.get("apiUrl.documentation") as string;
+        break;
+      default:
+        break;
+    }
 
-		let response = '';
-		this._response = '';
-		// Get the selected text of the active editor
-		const selection = vscode.window.activeTextEditor?.selection;
-		const selectedText = vscode.window.activeTextEditor?.document.getText(selection);
-		// Get the language id of the selected text of the active editor
-		// If a user does not want to append this information to their prompt, leave it as an empty string
-		// const languageId = (this._settings.codeblockWithLanguageId ? vscode.window.activeTextEditor?.document?.languageId : undefined) || "";
-		let searchPrompt = '';
+    return endpoint;
+  }
 
-		if (selection && selectedText) {
-			// If there is a selection, add the prompt and the selected text to the search prompt
-			searchPrompt = `${prompt}\n${selectedText}\n`;
-		} else {
-			// Otherwise, just use the prompt if user typed it
-			searchPrompt = prompt;
-		}
-		let promptTemplate = `<|system|>\n<|end|>\n<|user|>\n${searchPrompt}<|end|>\n<|assistant|>`;
-		this._fullPrompt = promptTemplate;
+  // This private method initializes a new ChatGPTAPI instance
+  private _newAPI() {
+    if (!this._authInfo || !this._isApiUrlValid(this._settings.apiUrl)) {
+      console.warn(
+        "API key or API URLs not set, please go to extension settings (read README.md for more info)"
+      );
+      this._chatGPTAPI = undefined;
+    } else {
+      console.log("api key is", this._authInfo.apiKey);
+      this._chatGPTAPI = new HfInference(this._authInfo.apiKey || "xx");
+    }
+  }
 
-		// Increment the message number
-		this._currentMessageNumber++;
-		let currentMessageNumber = this._currentMessageNumber;
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ) {
+    this._view = webviewView;
 
-		if (!this._chatGPTAPI) {
-			response = '[ERROR] "API key not set or wrong, please go to extension settings to set it (read README.md for more info)"';
-		} else {
-			// If successfully signed in
-			console.log("sendMessage");
-			console.log("set prompt", this._prompt)
-			// Make sure the prompt is shown
-			this._view?.webview.postMessage({ type: 'setPrompt', value: this._prompt });
-			this._view?.webview.postMessage({ type: 'addResponse', value: '...' });
+    // set options for the webview, allow scripts
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this._extensionUri],
+    };
 
-			const agent = this._chatGPTAPI;
+    // set the HTML for the webview
+    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-			try {
-				// HFInference
-				let temp_response = "";
+    // add an event listener for messages received by the webview
+    webviewView.webview.onDidReceiveMessage((data) => {
+      switch (data.type) {
+        case "codeSelected": {
+          let code = data.value;
+          const snippet = new vscode.SnippetString();
+          snippet.appendText(code);
+          // insert the code as a snippet into the active text editor
+          vscode.window.activeTextEditor?.insertSnippet(snippet);
+          break;
+        }
+        case "prompt": {
+          this.search(data.value);
+        }
+      }
+    });
+  }
 
-				for await (const output of this._chatGPTAPI.textGenerationStream({
-					model: BASE_URL,
-					inputs: this._fullPrompt,
-					parameters: { max_new_tokens: this._settings.maxNewTokens, temperature: this._settings.temperature, top_k: this._settings.topK, top_p: this._settings.topP }
-				}, { fetch: fetch })) {
-					if (this._view && this._view.visible) {
-						if (output.token.text === "<|end|>") {
-							break;
-						}
-						temp_response += output.token.text;
-						this._view?.webview.postMessage({ type: 'addResponse', value: temp_response });
-					}
-				}
-				response = temp_response;
+  public async search(prompt?: string, command?: string) {
+    this._prompt = prompt;
+    if (!prompt) {
+      prompt = "";
+    }
 
-			} catch (e: any) {
-				console.error(e);
-				if (this._currentMessageNumber === currentMessageNumber) {
-					response = this._response;
-					response += `\n\n---\n[ERROR] ${e}`;
-				}
-			}
-		}
+    // Check if the ChatGPTAPI instance is defined
+    if (!this._chatGPTAPI) {
+      this._newAPI();
+    }
 
-		if (this._currentMessageNumber !== currentMessageNumber) {
-			return;
-		}
+    // focus gpt activity from activity bar
+    if (!this._view) {
+      await vscode.commands.executeCommand("chatgpt.chatView.focus");
+    } else {
+      this._view?.show?.(true);
+    }
 
-		// Saves the response
-		this._response = response;
+    let response = "";
+    this._response = "";
+    // Get the selected text of the active editor
+    const selection = vscode.window.activeTextEditor?.selection;
+    const selectedText =
+      vscode.window.activeTextEditor?.document.getText(selection);
+    // Get the language id of the selected text of the active editor
+    // If a user does not want to append this information to their prompt, leave it as an empty string
+    // const languageId = (this._settings.codeblockWithLanguageId ? vscode.window.activeTextEditor?.document?.languageId : undefined) || "";
+    let searchPrompt = "";
 
-		// Show the view and send a message to the webview with the response
-		if (this._view) {
-			this._view.show?.(true);
-			this._view.webview.postMessage({ type: 'addResponse', value: response });
-		}
-	}
+    if (selection && selectedText) {
+      // If there is a selection, add the prompt and the selected text to the search prompt
+      searchPrompt = `${prompt}\n${selectedText}\n`;
+    } else {
+      // Otherwise, just use the prompt if user typed it
+      searchPrompt = prompt;
+    }
+    let promptTemplate = `<|system|>\n<|end|>\n<|user|>\n${searchPrompt}<|end|>\n<|assistant|>`;
+    this._fullPrompt = promptTemplate;
 
-	private _getHtmlForWebview(webview: vscode.Webview) {
+    // Increment the message number
+    this._currentMessageNumber++;
+    let currentMessageNumber = this._currentMessageNumber;
 
-		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
-		const microlightUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'scripts', 'microlight.min.js'));
-		const tailwindUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'scripts', 'showdown.min.js'));
-		const showdownUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'scripts', 'tailwind.min.js'));
+    if (!this._chatGPTAPI) {
+      response =
+        '[ERROR] "API key or API urls are not set or wrong, please go to extension settings to set it (read README.md for more info)"';
+    } else {
+      // If successfully signed in
+      console.log("sendMessage");
+      console.log("set prompt", this._prompt);
+      // Make sure the prompt is shown
+      this._view?.webview.postMessage({
+        type: "setPrompt",
+        value: this._prompt,
+      });
+      this._view?.webview.postMessage({ type: "addResponse", value: "..." });
 
-		return `<!DOCTYPE html>
+      const agent = this._chatGPTAPI;
+
+      const endpointToUse = command
+        ? this._getOperationEndpoint(command)
+        : BASE_URL;
+      console.log("sending to " + endpointToUse);
+
+      try {
+        // HFInference
+        let temp_response = "";
+
+        for await (const output of this._chatGPTAPI.textGenerationStream(
+          {
+            model: endpointToUse,
+            inputs: this._fullPrompt,
+            parameters: {
+              max_new_tokens: this._settings.maxNewTokens,
+              temperature: this._settings.temperature,
+              top_k: this._settings.topK,
+              top_p: this._settings.topP,
+            },
+          },
+          { fetch: fetch }
+        )) {
+          if (this._view && this._view.visible) {
+            if (output.token.text === "<|end|>") {
+              break;
+            }
+            temp_response += output.token.text;
+            this._view?.webview.postMessage({
+              type: "addResponse",
+              value: temp_response,
+            });
+          }
+        }
+        response = temp_response;
+      } catch (e: any) {
+        console.error(e);
+        if (this._currentMessageNumber === currentMessageNumber) {
+          response = this._response;
+          response += `\n\n---\n[ERROR] ${e}`;
+        }
+      }
+    }
+
+    if (this._currentMessageNumber !== currentMessageNumber) {
+      return;
+    }
+
+    // Saves the response
+    this._response = response;
+
+    // Show the view and send a message to the webview with the response
+    if (this._view) {
+      this._view.show?.(true);
+      this._view.webview.postMessage({ type: "addResponse", value: response });
+    }
+  }
+
+  private _getHtmlForWebview(webview: vscode.Webview) {
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "media", "main.js")
+    );
+    const microlightUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "media",
+        "scripts",
+        "microlight.min.js"
+      )
+    );
+    const tailwindUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "media",
+        "scripts",
+        "showdown.min.js"
+      )
+    );
+    const showdownUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this._extensionUri,
+        "media",
+        "scripts",
+        "tailwind.min.js"
+      )
+    );
+
+    return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
 				<meta charset="UTF-8">
@@ -319,8 +462,8 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
 				<script src="${scriptUri}"></script>
 			</body>
 			</html>`;
-	}
+  }
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
