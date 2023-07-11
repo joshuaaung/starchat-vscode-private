@@ -19,8 +19,7 @@ type Settings = {
   topP?: number;
 };
 
-const BASE_URL =
-  "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta";
+const BASE_URL = "http://localhost:8100/code/explain";
 
 // The number of OPERATION_COUNT should match the keys in the type ApiURL count. Meaning one api endpoint per operation
 const OPERATION_COUNT = 5;
@@ -388,7 +387,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
       //   }
 
       // Local Stream Inference
-      const streamGenerator = streamInference(this._fullPrompt);
+      const streamGenerator = streamInference(this._fullPrompt, endpointToUse);
 
       while (true) {
         try {
