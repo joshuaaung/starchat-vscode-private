@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { HfInference } from "@huggingface/inference";
+import streamInference from "./streamInference";
 const fetch = require("node-fetch-polyfill");
 
 type AuthInfo = { apiKey?: string };
@@ -318,8 +319,9 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
       // Otherwise, just use the prompt if user typed it
       searchPrompt = prompt;
     }
-    let promptTemplate = `<|system|>\n<|end|>\n<|user|>\n${searchPrompt}<|end|>\n<|assistant|>`;
-    this._fullPrompt = promptTemplate;
+    // let promptTemplate = `<|system|>\n<|end|>\n<|user|>\n${searchPrompt}<|end|>\n<|assistant|>`;
+    // this._fullPrompt = promptTemplate;
+    this._fullPrompt = `${searchPrompt}`;
 
     // Increment the message number
     this._currentMessageNumber++;
@@ -346,35 +348,63 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
         : BASE_URL;
       console.log("sending to " + endpointToUse);
 
+      let tempResponse = "";
       // HFInference
-      let temp_response = "";
-      let hfTextAsyncGenerator = this._chatGPTAPI.textGenerationStream(
-        {
-          model: endpointToUse,
-          inputs: this._fullPrompt,
-          parameters: {
-            max_new_tokens: this._settings.maxNewTokens,
-            temperature: this._settings.temperature,
-            top_k: this._settings.topK,
-            top_p: this._settings.topP,
-          },
-        },
-        { fetch: fetch }
-      );
+      // let hfTextAsyncGenerator = this._chatGPTAPI.textGenerationStream(
+      //     {
+      //       model: endpointToUse,
+      //       inputs: this._fullPrompt,
+      //       parameters: {
+      //         max_new_tokens: this._settings.maxNewTokens,
+      //         temperature: this._settings.temperature,
+      //         top_k: this._settings.topK,
+      //         top_p: this._settings.topP,
+      //       },
+      //     },
+      //     { fetch: fetch }
+      //   );
+
+      //   while (true) {
+      //     try {
+      //       let { value: output, done } = await hfTextAsyncGenerator.next();
+      //       if (this._view && this._view.visible) {
+      //         if (output.token.text === "<|end|>") {
+      //           break;
+      //         }
+      //         tempResponse += output.token.text;
+      //         this._view?.webview.postMessage({
+      //           type: "addResponse",
+      //           value: tempResponse,
+      //         });
+      //       }
+      //       if (done) break;
+      //     } catch (e: any) {
+      //       if (this._currentMessageNumber === currentMessageNumber) {
+      //         response = this._response;
+      //         response += `\n\n---\n[ERROR] ${e}`;
+      //       }
+      //       break;
+      //     }
+      //   }
+
+      // Local Stream Inference
+      const streamGenerator = streamInference(this._fullPrompt);
+
       while (true) {
         try {
-          let { value: output, done } = await hfTextAsyncGenerator.next();
+          let { value: output, done } = await streamGenerator.next();
+
+          if (done) {
+            break;
+          }
+
           if (this._view && this._view.visible) {
-            if (output.token.text === "<|end|>") {
-              break;
-            }
-            temp_response += output.token.text;
+            tempResponse += output;
             this._view?.webview.postMessage({
               type: "addResponse",
-              value: temp_response,
+              value: tempResponse,
             });
           }
-          if (done) break;
         } catch (e: any) {
           if (this._currentMessageNumber === currentMessageNumber) {
             response = this._response;
@@ -383,44 +413,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
           break;
         }
       }
-      response = temp_response;
-      //   try {
-      //     // HFInference
-      //     let temp_response = "";
-
-      //     for await (const output of this._chatGPTAPI.textGenerationStream(
-      //       {
-      //         model: endpointToUse,
-      //         inputs: this._fullPrompt,
-      //         parameters: {
-      //           max_new_tokens: this._settings.maxNewTokens,
-      //           temperature: this._settings.temperature,
-      //           top_k: this._settings.topK,
-      //           top_p: this._settings.topP,
-      //         },
-      //       },
-      //       { fetch: fetch }
-      //     )) {
-      //       if (this._view && this._view.visible) {
-      //         if (output.token.text === "<|end|>") {
-      //           break;
-      //         }
-      //         temp_response += output.token.text;
-      //         this._view?.webview.postMessage({
-      //           type: "addResponse",
-      //           value: temp_response,
-      //         });
-      //       }
-      //     }
-      //     response = temp_response;
-      //   } catch (e: any) {
-      //     console.log("here1");
-      //     console.error(e);
-      //     if (this._currentMessageNumber === currentMessageNumber) {
-      //       response = this._response;
-      //       response += `\n\n---\n[ERROR] ${e}`;
-      //     }
-      //   }
+      response = tempResponse;
     }
 
     if (this._currentMessageNumber !== currentMessageNumber) {
