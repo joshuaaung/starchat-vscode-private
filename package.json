@@ -267,6 +267,7 @@
   },
   "dependencies": {
     "@huggingface/inference": "^2.5.2",
+    "axios": "^1.4.0",
     "node-fetch-polyfill": "^2.0.6"
   }
 }
