@@ -13,13 +13,9 @@ type ApiURL = {
 };
 type Settings = {
   apiUrl?: ApiURL;
-  maxNewTokens?: number;
-  temperature?: number;
-  topK?: number;
-  topP?: number;
 };
 
-const BASE_URL = "http://localhost:8100/code/explain";
+const BASE_URL = "http://localhost:8100/v1/code/explain";
 
 // The number of OPERATION_COUNT should match the keys in the type ApiURL count. Meaning one api endpoint per operation
 const OPERATION_COUNT = 5;
@@ -40,16 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
   });
   provider.setSettings({
     apiUrl: {
-      explain: config.get("apiUrl.explain") || BASE_URL,
-      refactor: config.get("apiUrl.refactor") || BASE_URL,
-      findProblems: config.get("apiUrl.findProblems") || BASE_URL,
-      optimize: config.get("apiUrl.optimize") || BASE_URL,
-      documentation: config.get("apiUrl.documentation") || BASE_URL,
+      explain: config.get("apiUrl.explain") || "",
+      refactor: config.get("apiUrl.refactor") || "",
+      findProblems: config.get("apiUrl.findProblems") || "",
+      optimize: config.get("apiUrl.optimize") || "",
+      documentation: config.get("apiUrl.documentation") || "",
     },
-    maxNewTokens: config.get("maxNewTokens") || 1024,
-    temperature: config.get("temperature") || 0.2,
-    topK: config.get("topK") || 50,
-    topP: config.get("topP") || 0.95,
   });
 
   // Register the provider with the extension's context
@@ -64,27 +56,25 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   const commandHandler = (command: string) => {
-    const config = vscode.workspace.getConfiguration("starchat");
-    const prompt = config.get(command) as string;
-    provider.search(prompt, command);
+    provider.search(command);
   };
 
   // Register the commands that can be called from the extension's package.json
   context.subscriptions.push(
     vscode.commands.registerCommand("chatgpt.explain", () =>
-      commandHandler("promptPrefix.explain")
+      commandHandler("explain")
     ),
     vscode.commands.registerCommand("chatgpt.refactor", () =>
-      commandHandler("promptPrefix.refactor")
+      commandHandler("refactor")
     ),
     vscode.commands.registerCommand("chatgpt.optimize", () =>
-      commandHandler("promptPrefix.optimize")
+      commandHandler("optimize")
     ),
     vscode.commands.registerCommand("chatgpt.findProblems", () =>
-      commandHandler("promptPrefix.findProblems")
+      commandHandler("findProblems")
     ),
     vscode.commands.registerCommand("chatgpt.documentation", () =>
-      commandHandler("promptPrefix.documentation")
+      commandHandler("documentation")
     )
   );
 
@@ -114,18 +104,6 @@ export function activate(context: vscode.ExtensionContext) {
         const config = vscode.workspace.getConfiguration("starchat");
         let url = config.get("apiUrl.documentation") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { documentation: url } });
-      } else if (event.affectsConfiguration("starchat.maxNewTokens")) {
-        const config = vscode.workspace.getConfiguration("starchat");
-        provider.setSettings({ maxNewTokens: config.get("maxNewTokens") });
-      } else if (event.affectsConfiguration("starchat.temperature")) {
-        const config = vscode.workspace.getConfiguration("starchat");
-        provider.setSettings({ temperature: config.get("temperature") });
-      } else if (event.affectsConfiguration("starchat.topK")) {
-        const config = vscode.workspace.getConfiguration("starchat");
-        provider.setSettings({ topK: config.get("topK") });
-      } else if (event.affectsConfiguration("starchat.topP")) {
-        const config = vscode.workspace.getConfiguration("starchat");
-        provider.setSettings({ topP: config.get("topP") });
       }
     }
   );
@@ -137,8 +115,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
   private _chatGPTAPI?: HfInference;
 
   private _response?: string;
-  private _prompt?: string;
-  private _fullPrompt?: string;
+  private _input?: string;
   private _currentMessageNumber = 0;
 
   private _settings: Settings = {
@@ -149,10 +126,6 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
       optimize: BASE_URL,
       documentation: BASE_URL,
     },
-    maxNewTokens: 1024,
-    temperature: 0.2,
-    topK: 50,
-    topP: 0.95,
   };
 
   private _authInfo?: AuthInfo;
@@ -213,19 +186,19 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     let endpoint = "";
 
     switch (command) {
-      case "promptPrefix.explain":
+      case "explain":
         endpoint = config.get("apiUrl.explain") as string;
         break;
-      case "promptPrefix.refactor":
+      case "refactor":
         endpoint = config.get("apiUrl.refactor") as string;
         break;
-      case "promptPrefix.findProblems":
+      case "findProblems":
         endpoint = config.get("apiUrl.findProblems") as string;
         break;
-      case "promptPrefix.optimize":
+      case "optimize":
         endpoint = config.get("apiUrl.optimize") as string;
         break;
-      case "promptPrefix.documentation":
+      case "documentation":
         endpoint = config.get("apiUrl.documentation") as string;
         break;
       default:
@@ -282,11 +255,8 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  public async search(prompt?: string, command?: string) {
-    this._prompt = prompt;
-    if (!prompt) {
-      prompt = "";
-    }
+  public async search(command?: string) {
+    this._input = "";
 
     // Check if the ChatGPTAPI instance is defined
     if (!this._chatGPTAPI) {
@@ -306,21 +276,13 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     const selection = vscode.window.activeTextEditor?.selection;
     const selectedText =
       vscode.window.activeTextEditor?.document.getText(selection);
-    // Get the language id of the selected text of the active editor
-    // If a user does not want to append this information to their prompt, leave it as an empty string
-    // const languageId = (this._settings.codeblockWithLanguageId ? vscode.window.activeTextEditor?.document?.languageId : undefined) || "";
-    let searchPrompt = "";
 
     if (selection && selectedText) {
-      // If there is a selection, add the prompt and the selected text to the search prompt
-      searchPrompt = `${prompt}\n${selectedText}\n`;
+      // If there is a selection, set the selected text as the _input
+      this._input = `${selectedText}`;
     } else {
-      // Otherwise, just use the prompt if user typed it
-      searchPrompt = prompt;
+      // throw an error
     }
-    // let promptTemplate = `<|system|>\n<|end|>\n<|user|>\n${searchPrompt}<|end|>\n<|assistant|>`;
-    // this._fullPrompt = promptTemplate;
-    this._fullPrompt = `${searchPrompt}`;
 
     // Increment the message number
     this._currentMessageNumber++;
@@ -332,15 +294,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     } else {
       // If successfully signed in
       console.log("sendMessage");
-      console.log("set prompt", this._prompt);
-      // Make sure the prompt is shown
-      this._view?.webview.postMessage({
-        type: "setPrompt",
-        value: this._prompt,
-      });
       this._view?.webview.postMessage({ type: "addResponse", value: "..." });
-
-      const agent = this._chatGPTAPI;
 
       const endpointToUse = command
         ? this._getOperationEndpoint(command)
@@ -387,7 +341,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
       //   }
 
       // Local Stream Inference
-      const streamGenerator = streamInference(this._fullPrompt, endpointToUse);
+      const streamGenerator = streamInference(this._input, endpointToUse);
 
       while (true) {
         try {
@@ -485,7 +439,6 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
 				</style>
 			</head>
 			<body>
-				<input class="h-10 w-full text-white bg-stone-700 p-4 text-sm" placeholder="Ask Starchat something" id="prompt-input" readonly/>
 				
 				<div id="response" class="pt-4 text-sm">
 				</div>
