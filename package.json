@@ -3,8 +3,12 @@
   "displayName": "Wingman: write and improve code using AI",
   "description": "Use Wingman right inside the IDE to enhance and automate your coding with AI-powered assistance (unofficial)",
   "version": "2.0.0",
+  "publisher": "moikent",
   "icon": "resources/extensionIcon.png",
   "license": "MIT",
+  "repository": {
+    "url": "https://github.com/joshuaaung/starchat-vscode-private"
+  },
   "engines": {
     "vscode": "^1.73.0"
   },
