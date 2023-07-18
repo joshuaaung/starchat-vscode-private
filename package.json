@@ -1,14 +1,10 @@
 {
-  "name": "starchat",
-  "displayName": "Starchat: write and improve code using AI",
-  "description": "Use Starchat right inside the IDE to enhance and automate your coding with AI-powered assistance (unofficial)",
-  "version": "1.0.0",
-  "publisher": "moikent",
+  "name": "wingman",
+  "displayName": "Wingman: write and improve code using AI",
+  "description": "Use Wingman right inside the IDE to enhance and automate your coding with AI-powered assistance (unofficial)",
+  "version": "2.0.0",
   "icon": "resources/extensionIcon.png",
   "license": "MIT",
-  "repository": {
-    "url": "https://github.com/moikent/starchat-vscode"
-  },
   "engines": {
     "vscode": "^1.73.0"
   },
@@ -17,14 +13,14 @@
   ],
   "keywords": [
     "huggingface",
-    "starchat",
     "chatgpt",
     "copilot",
     "ai",
     "explain",
     "find bugs",
     "explain ",
-    "refactor"
+    "refactor",
+    "wingman"
   ],
   "activationEvents": [
     "onView:chatgpt.chatView",
@@ -40,31 +36,31 @@
     "commands": [
       {
         "command": "chatgpt.explain",
-        "title": "Starchat: Explain selection"
+        "title": "Wingman: Explain selection"
       },
       {
         "command": "chatgpt.refactor",
-        "title": "Starchat: Refactor selection"
+        "title": "Wingman: Refactor selection"
       },
       {
         "command": "chatgpt.findProblems",
-        "title": "Starchat: Find problems"
+        "title": "Wingman: Find problems"
       },
       {
         "command": "chatgpt.optimize",
-        "title": "Starchat: Optimize selection"
+        "title": "Wingman: Optimize selection"
       },
       {
         "command": "chatgpt.documentation",
-        "title": "Starchat: Write documentation"
+        "title": "Wingman: Write documentation"
       },
       {
         "command": "chatgpt.resetConversation",
-        "title": "Reset Starchat conversation"
+        "title": "Reset Wingman conversation"
       },
       {
         "command": "chatgpt.tryAgain",
-        "title": "Retry Starchat request"
+        "title": "Retry Wingman request"
       }
     ],
     "menus": {
@@ -125,7 +121,7 @@
       "activitybar": [
         {
           "id": "chatgpt",
-          "title": "Starchat",
+          "title": "Wingman",
           "icon": "resources/icon.png"
         }
       ]
@@ -135,45 +131,45 @@
         {
           "type": "webview",
           "id": "chatgpt.chatView",
-          "name": "Starchat"
+          "name": "Wingman"
         }
       ]
     },
     "configuration": {
-      "title": "Starchat",
+      "title": "Wingman",
       "type": "object",
       "properties": {
-        "starchat.apiKey": {
-          "markdownDescription": "Huggingface access token from [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)",
+        "wingman.apiKey": {
+          "markdownDescription": "Some api key placeholder",
           "type": "string",
           "order": 0
         },
-        "starchat.apiUrl.explain": {
-          "markdownDescription": "Huggingface Starchat Explain API URL or other custom API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+        "wingman.apiUrl.explain": {
+          "markdownDescription": "Wingman Explain API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
           "type": "string",
           "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
           "order": 1
         },
-        "starchat.apiUrl.refactor": {
-          "markdownDescription": "Huggingface Starchat Refactor API URL or other custom API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+        "wingman.apiUrl.refactor": {
+          "markdownDescription": "Wingman Refactor API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
           "type": "string",
           "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
           "order": 2
         },
-        "starchat.apiUrl.findProblems": {
-          "markdownDescription": "Huggingface Starchat Find Problems API URL or other custom API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+        "wingman.apiUrl.findProblems": {
+          "markdownDescription": "Wingman Find Problems API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
           "type": "string",
           "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
           "order": 3
         },
-        "starchat.apiUrl.optimize": {
-          "markdownDescription": "Huggingface Starchat Optimize API URL or other custom API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+        "wingman.apiUrl.optimize": {
+          "markdownDescription": "Wingman Optimize API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
           "type": "string",
           "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
           "order": 4
         },
-        "starchat.apiUrl.documentation": {
-          "markdownDescription": "Huggingface Starchat Documentation API URL or other custom API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+        "wingman.apiUrl.documentation": {
+          "markdownDescription": "Wingman Documentation API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
           "type": "string",
           "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
           "order": 5
@@ -213,7 +209,6 @@
   },
   "dependencies": {
     "@huggingface/inference": "^2.5.2",
-    "axios": "^1.4.0",
-    "node-fetch-polyfill": "^2.0.6"
+    "axios": "^1.4.0"
   }
 }

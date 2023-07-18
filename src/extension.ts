@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { HfInference } from "@huggingface/inference";
 import streamInference from "./streamInference";
-const fetch = require("node-fetch-polyfill");
 
 type AuthInfo = { apiKey?: string };
 type ApiURL = {
@@ -23,7 +22,7 @@ const OPERATION_COUNT = 5;
 export function activate(context: vscode.ExtensionContext) {
   console.log('activating extension "chatgpt"');
   // Get the settings from the extension's configuration
-  const config = vscode.workspace.getConfiguration("starchat");
+  const config = vscode.workspace.getConfiguration("wingman");
 
   console.log(config);
 
@@ -81,27 +80,27 @@ export function activate(context: vscode.ExtensionContext) {
   // Change the extension's session token or settings when configuration is changed
   vscode.workspace.onDidChangeConfiguration(
     (event: vscode.ConfigurationChangeEvent) => {
-      if (event.affectsConfiguration("starchat.apiKey")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      if (event.affectsConfiguration("wingman.apiKey")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         provider.setAuthenticationInfo({ apiKey: config.get("apiKey") });
-      } else if (event.affectsConfiguration("starchat.apiUrl.explain")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      } else if (event.affectsConfiguration("wingman.apiUrl.explain")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         let url = config.get("apiUrl.explain") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { explain: url } });
-      } else if (event.affectsConfiguration("starchat.apiUrl.refactor")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      } else if (event.affectsConfiguration("wingman.apiUrl.refactor")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         let url = config.get("apiUrl.refactor") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { refactor: url } });
-      } else if (event.affectsConfiguration("starchat.apiUrl.findProblems")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      } else if (event.affectsConfiguration("wingman.apiUrl.findProblems")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         let url = config.get("apiUrl.findProblems") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { findProblems: url } });
-      } else if (event.affectsConfiguration("starchat.apiUrl.optimize")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      } else if (event.affectsConfiguration("wingman.apiUrl.optimize")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         let url = config.get("apiUrl.optimize") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { optimize: url } });
-      } else if (event.affectsConfiguration("starchat.apiUrl.documentation")) {
-        const config = vscode.workspace.getConfiguration("starchat");
+      } else if (event.affectsConfiguration("wingman.apiUrl.documentation")) {
+        const config = vscode.workspace.getConfiguration("wingman");
         let url = config.get("apiUrl.documentation") as string; // || BASE_URL;
         provider.setSettings({ apiUrl: { documentation: url } });
       }
@@ -181,7 +180,7 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getOperationEndpoint(command: string): string {
-    const config = vscode.workspace.getConfiguration("starchat");
+    const config = vscode.workspace.getConfiguration("wingman");
 
     let endpoint = "";
 
