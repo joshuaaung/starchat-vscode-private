@@ -145,33 +145,33 @@
           "order": 0
         },
         "wingman.apiUrl.explain": {
-          "markdownDescription": "Wingman Explain API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+          "markdownDescription": "Wingman Explain API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain)",
           "type": "string",
-          "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
+          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain",
           "order": 1
         },
         "wingman.apiUrl.refactor": {
-          "markdownDescription": "Wingman Refactor API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+          "markdownDescription": "Wingman Refactor API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor)",
           "type": "string",
-          "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
+          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor",
           "order": 2
         },
         "wingman.apiUrl.findProblems": {
-          "markdownDescription": "Wingman Find Problems API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+          "markdownDescription": "Wingman Find Problems API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems)",
           "type": "string",
-          "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
+          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems",
           "order": 3
         },
         "wingman.apiUrl.optimize": {
-          "markdownDescription": "Wingman Optimize API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+          "markdownDescription": "Wingman Optimize API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize)",
           "type": "string",
-          "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
+          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize",
           "order": 4
         },
         "wingman.apiUrl.documentation": {
-          "markdownDescription": "Wingman Documentation API URL. Defaults to [https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta](https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta)",
+          "markdownDescription": "Wingman Documentation API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation)",
           "type": "string",
-          "default": "https://api-inference.huggingface.co/models/HuggingFaceH4/starchat-beta",
+          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation",
           "order": 5
         }
       }
