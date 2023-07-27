@@ -4,7 +4,7 @@
   "description": "Use Wingman right inside the IDE to enhance and automate your coding with AI-powered assistance (unofficial)",
   "version": "2.0.0",
   "publisher": "moikent",
-  "icon": "resources/extensionIcon.png",
+  "icon": "resources/wingmanExtensionIcon.png",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/joshuaaung/starchat-vscode-private"
@@ -126,7 +126,7 @@
         {
           "id": "chatgpt",
           "title": "Wingman",
-          "icon": "resources/icon.png"
+          "icon": "resources/wingmanExtensionIcon.png"
         }
       ]
     },
@@ -144,39 +144,15 @@
       "type": "object",
       "properties": {
         "wingman.apiKey": {
-          "markdownDescription": "Some api key placeholder",
+          "markdownDescription": "Wingman Inference API Key",
           "type": "string",
           "order": 0
         },
-        "wingman.apiUrl.explain": {
-          "markdownDescription": "Wingman Explain API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain)",
+        "wingman.apiUrl": {
+          "markdownDescription": "Wingman Inference API URL. Defaults to [https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream](https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream)",
           "type": "string",
-          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/explain",
+          "default": "https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream",
           "order": 1
-        },
-        "wingman.apiUrl.refactor": {
-          "markdownDescription": "Wingman Refactor API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor)",
-          "type": "string",
-          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/refactor",
-          "order": 2
-        },
-        "wingman.apiUrl.findProblems": {
-          "markdownDescription": "Wingman Find Problems API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems)",
-          "type": "string",
-          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/find-problems",
-          "order": 3
-        },
-        "wingman.apiUrl.optimize": {
-          "markdownDescription": "Wingman Optimize API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize)",
-          "type": "string",
-          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/optimize",
-          "order": 4
-        },
-        "wingman.apiUrl.documentation": {
-          "markdownDescription": "Wingman Documentation API URL. Defaults to [https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation](https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation)",
-          "type": "string",
-          "default": "https://wingman-prompt-ms-preprod.ml-4d924a26-750.apps.apps.prod6.ocbc.com/v1/code/write-documentation",
-          "order": 5
         }
       }
     }
@@ -212,7 +188,6 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
-    "@huggingface/inference": "^2.5.2",
     "axios": "^1.4.0"
   }
 }

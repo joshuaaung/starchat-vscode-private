@@ -1,46 +1,27 @@
 import * as vscode from "vscode";
-import { HfInference } from "@huggingface/inference";
-import streamInference from "./streamInference";
+import { WingmanInference } from "./inferences/wingmanInference";
+import { PromptType } from "./enums";
 
 type AuthInfo = { apiKey?: string };
-type ApiURL = {
-  explain?: string;
-  refactor?: string;
-  findProblems?: string;
-  optimize?: string;
-  documentation?: string;
-};
+
 type Settings = {
-  apiUrl?: ApiURL;
+  apiUrl?: string;
 };
-
-const BASE_URL = "http://localhost:8100/v1/code/explain";
-
-// The number of OPERATION_COUNT should match the keys in the type ApiURL count. Meaning one api endpoint per operation
-const OPERATION_COUNT = 5;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('activating extension "chatgpt"');
+  console.log('activating extension "Wingman"');
   // Get the settings from the extension's configuration
   const config = vscode.workspace.getConfiguration("wingman");
-
-  console.log(config);
 
   // Create a new TextGenerationViewProvider instance and register it with the extension's context
   const provider = new TextGenerationViewProvider(context.extensionUri);
 
   // Put configuration settings into the provider
   provider.setAuthenticationInfo({
-    apiKey: config.get("apiKey"),
+    apiKey: config.get("apiKey") || "",
   });
   provider.setSettings({
-    apiUrl: {
-      explain: config.get("apiUrl.explain") || "",
-      refactor: config.get("apiUrl.refactor") || "",
-      findProblems: config.get("apiUrl.findProblems") || "",
-      optimize: config.get("apiUrl.optimize") || "",
-      documentation: config.get("apiUrl.documentation") || "",
-    },
+    apiUrl: config.get("apiUrl") || "",
   });
 
   // Register the provider with the extension's context
@@ -54,26 +35,26 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  const commandHandler = (command: string) => {
-    provider.search(command);
+  const commandHandler = (promptType: string) => {
+    provider.chat(promptType);
   };
 
   // Register the commands that can be called from the extension's package.json
   context.subscriptions.push(
     vscode.commands.registerCommand("chatgpt.explain", () =>
-      commandHandler("explain")
+      commandHandler(PromptType.Explain)
     ),
     vscode.commands.registerCommand("chatgpt.refactor", () =>
-      commandHandler("refactor")
+      commandHandler(PromptType.Refactor)
     ),
     vscode.commands.registerCommand("chatgpt.optimize", () =>
-      commandHandler("optimize")
+      commandHandler(PromptType.Optimize)
     ),
     vscode.commands.registerCommand("chatgpt.findProblems", () =>
-      commandHandler("findProblems")
+      commandHandler(PromptType.FindProblems)
     ),
     vscode.commands.registerCommand("chatgpt.documentation", () =>
-      commandHandler("documentation")
+      commandHandler(PromptType.WriteDocumentation)
     )
   );
 
@@ -83,26 +64,10 @@ export function activate(context: vscode.ExtensionContext) {
       if (event.affectsConfiguration("wingman.apiKey")) {
         const config = vscode.workspace.getConfiguration("wingman");
         provider.setAuthenticationInfo({ apiKey: config.get("apiKey") });
-      } else if (event.affectsConfiguration("wingman.apiUrl.explain")) {
+      } else if (event.affectsConfiguration("wingman.apiUrl")) {
         const config = vscode.workspace.getConfiguration("wingman");
-        let url = config.get("apiUrl.explain") as string; // || BASE_URL;
-        provider.setSettings({ apiUrl: { explain: url } });
-      } else if (event.affectsConfiguration("wingman.apiUrl.refactor")) {
-        const config = vscode.workspace.getConfiguration("wingman");
-        let url = config.get("apiUrl.refactor") as string; // || BASE_URL;
-        provider.setSettings({ apiUrl: { refactor: url } });
-      } else if (event.affectsConfiguration("wingman.apiUrl.findProblems")) {
-        const config = vscode.workspace.getConfiguration("wingman");
-        let url = config.get("apiUrl.findProblems") as string; // || BASE_URL;
-        provider.setSettings({ apiUrl: { findProblems: url } });
-      } else if (event.affectsConfiguration("wingman.apiUrl.optimize")) {
-        const config = vscode.workspace.getConfiguration("wingman");
-        let url = config.get("apiUrl.optimize") as string; // || BASE_URL;
-        provider.setSettings({ apiUrl: { optimize: url } });
-      } else if (event.affectsConfiguration("wingman.apiUrl.documentation")) {
-        const config = vscode.workspace.getConfiguration("wingman");
-        let url = config.get("apiUrl.documentation") as string; // || BASE_URL;
-        provider.setSettings({ apiUrl: { documentation: url } });
+        let url = config.get("apiUrl") as string;
+        provider.setSettings({ apiUrl: url });
       }
     }
   );
@@ -111,112 +76,43 @@ export function activate(context: vscode.ExtensionContext) {
 class TextGenerationViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "chatgpt.chatView";
   private _view?: vscode.WebviewView;
-  private _chatGPTAPI?: HfInference;
+  private _wingmanInferenceAPI?: WingmanInference;
 
   private _response?: string;
   private _input?: string;
   private _currentMessageNumber = 0;
 
-  private _settings: Settings = {
-    apiUrl: {
-      explain: BASE_URL,
-      refactor: BASE_URL,
-      findProblems: BASE_URL,
-      optimize: BASE_URL,
-      documentation: BASE_URL,
-    },
-  };
+  private _settings?: Settings;
 
   private _authInfo?: AuthInfo;
 
   // In the constructor, we store the URI of the extension
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
-  // Set the API key and create a new API instance based on this key
+  // Set the API key
   public setAuthenticationInfo(authInfo: AuthInfo) {
-    this._authInfo = authInfo;
-    this._newAPI();
+    this._authInfo = { ...this._authInfo, ...authInfo };
   }
 
+  // Set the setting and create a new API instance based on this settings options
   public setSettings(settings: Settings) {
-    let changeModel = false;
-    if (settings.apiUrl) {
-      changeModel = true;
-      this._settings.apiUrl = { ...this._settings.apiUrl, ...settings.apiUrl };
-    } else {
-      this._settings = { ...this._settings, ...settings };
-    }
-
-    if (changeModel) {
-      this._newAPI();
-    }
+    this._settings = { ...this._settings, ...settings };
+    this._newAPI();
   }
 
   public getSettings() {
     return this._settings;
   }
 
-  private _isApiUrlValid(apiUrl: ApiURL | undefined): boolean {
-    if (!apiUrl) {
-      return false; // Object is undefined
-    }
-
-    const expectedKeysCount = OPERATION_COUNT;
-    const actualKeys = Object.keys(apiUrl);
-
-    if (actualKeys.length !== expectedKeysCount) {
-      return false; // Object does not have all the keys
-    }
-
-    for (const key of actualKeys) {
-      const value = apiUrl[key as keyof ApiURL];
-
-      if (value === null || value === undefined || value.trim() === "") {
-        return false; // Value is null, undefined, or empty
-      }
-    }
-
-    return true; // All keys have valid values
-  }
-
-  private _getOperationEndpoint(command: string): string {
-    const config = vscode.workspace.getConfiguration("wingman");
-
-    let endpoint = "";
-
-    switch (command) {
-      case "explain":
-        endpoint = config.get("apiUrl.explain") as string;
-        break;
-      case "refactor":
-        endpoint = config.get("apiUrl.refactor") as string;
-        break;
-      case "findProblems":
-        endpoint = config.get("apiUrl.findProblems") as string;
-        break;
-      case "optimize":
-        endpoint = config.get("apiUrl.optimize") as string;
-        break;
-      case "documentation":
-        endpoint = config.get("apiUrl.documentation") as string;
-        break;
-      default:
-        break;
-    }
-
-    return endpoint;
-  }
-
-  // This private method initializes a new ChatGPTAPI instance
+  // This private method initializes a new Inference instance
   private _newAPI() {
-    if (!this._authInfo || !this._isApiUrlValid(this._settings.apiUrl)) {
-      console.warn(
-        "API key or API URLs not set, please go to extension settings (read README.md for more info)"
-      );
-      this._chatGPTAPI = undefined;
+    if (!this._settings?.apiUrl) {
+      this._wingmanInferenceAPI = undefined;
     } else {
-      console.log("api key is", this._authInfo.apiKey);
-      this._chatGPTAPI = new HfInference(this._authInfo.apiKey || "xx");
+      this._wingmanInferenceAPI = new WingmanInference(
+        this._authInfo?.apiKey || "",
+        this._settings?.apiUrl || ""
+      );
     }
   }
 
@@ -239,26 +135,25 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     // add an event listener for messages received by the webview
     webviewView.webview.onDidReceiveMessage((data) => {
       switch (data.type) {
-        case "codeSelected": {
-          let code = data.value;
-          const snippet = new vscode.SnippetString();
-          snippet.appendText(code);
-          // insert the code as a snippet into the active text editor
-          vscode.window.activeTextEditor?.insertSnippet(snippet);
+        // case "codeSelected":
+        //   let code = data.value;
+        //   const snippet = new vscode.SnippetString();
+        //   snippet.appendText(code);
+        //   // insert the code as a snippet into the active text editor
+        //   vscode.window.activeTextEditor?.insertSnippet(snippet);
+        //   break;
+        case "prompt":
+          this.chat(PromptType.Chat, data.value);
           break;
-        }
-        case "prompt": {
-          this.search(data.value);
-        }
       }
     });
   }
 
-  public async search(command?: string) {
+  public async chat(promptType: string, prompt?: string) {
     this._input = "";
 
-    // Check if the ChatGPTAPI instance is defined
-    if (!this._chatGPTAPI) {
+    // Check if the WingmanAPI instance is defined
+    if (!this._wingmanInferenceAPI) {
       this._newAPI();
     }
 
@@ -276,7 +171,10 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     const selectedText =
       vscode.window.activeTextEditor?.document.getText(selection);
 
-    if (selection && selectedText) {
+    if (prompt) {
+      // this must be coming from the prompt-input when `prompt` is supplied
+      this._input = `${prompt}`;
+    } else if (selection && selectedText) {
       // If there is a selection, set the selected text as the _input
       this._input = `${selectedText}`;
     } else {
@@ -287,60 +185,22 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     this._currentMessageNumber++;
     let currentMessageNumber = this._currentMessageNumber;
 
-    if (!this._chatGPTAPI) {
+    if (!this._wingmanInferenceAPI) {
       response =
-        '[ERROR] "API key or API urls are not set or wrong, please go to extension settings to set it (read README.md for more info)"';
+        "[ERROR 😕] Wingman Inference API URL is not set. Please go to extension settings (read README.md for more info)";
     } else {
       // If successfully signed in
-      console.log("sendMessage");
+      console.log("sending to " + this._wingmanInferenceAPI?.endpoint);
+
       this._view?.webview.postMessage({ type: "addResponse", value: "..." });
 
-      const endpointToUse = command
-        ? this._getOperationEndpoint(command)
-        : BASE_URL;
-      console.log("sending to " + endpointToUse);
-
       let tempResponse = "";
-      // HFInference
-      // let hfTextAsyncGenerator = this._chatGPTAPI.textGenerationStream(
-      //     {
-      //       model: endpointToUse,
-      //       inputs: this._fullPrompt,
-      //       parameters: {
-      //         max_new_tokens: this._settings.maxNewTokens,
-      //         temperature: this._settings.temperature,
-      //         top_k: this._settings.topK,
-      //         top_p: this._settings.topP,
-      //       },
-      //     },
-      //     { fetch: fetch }
-      //   );
 
-      //   while (true) {
-      //     try {
-      //       let { value: output, done } = await hfTextAsyncGenerator.next();
-      //       if (this._view && this._view.visible) {
-      //         if (output.token.text === "<|end|>") {
-      //           break;
-      //         }
-      //         tempResponse += output.token.text;
-      //         this._view?.webview.postMessage({
-      //           type: "addResponse",
-      //           value: tempResponse,
-      //         });
-      //       }
-      //       if (done) break;
-      //     } catch (e: any) {
-      //       if (this._currentMessageNumber === currentMessageNumber) {
-      //         response = this._response;
-      //         response += `\n\n---\n[ERROR] ${e}`;
-      //       }
-      //       break;
-      //     }
-      //   }
-
-      // Local Stream Inference
-      const streamGenerator = streamInference(this._input, endpointToUse);
+      // Wingman Stream Inference
+      const streamGenerator = this._wingmanInferenceAPI?.textGenerationStream(
+        this._input,
+        promptType
+      );
 
       while (true) {
         try {
@@ -358,19 +218,22 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
             });
           }
         } catch (e: any) {
-          if (this._currentMessageNumber === currentMessageNumber) {
-            response = this._response;
-            response += `\n\n---\n[ERROR] ${e}`;
+          if (e) {
+            tempResponse = "[ERROR 😕] Something went wrong";
+          } else if (this._currentMessageNumber === currentMessageNumber) {
+            tempResponse = this._response;
+            tempResponse += `\n\n---\n[ERROR] ${e}`;
           }
+
           break;
         }
       }
       response = tempResponse;
     }
 
-    if (this._currentMessageNumber !== currentMessageNumber) {
-      return;
-    }
+    // if (this._currentMessageNumber !== currentMessageNumber) {
+    //   return;
+    // }
 
     // Saves the response
     this._response = response;
@@ -438,7 +301,8 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
 				</style>
 			</head>
 			<body>
-				
+        <input class="h-10 w-full text-white bg-stone-700 p-4 text-sm" placeholder="Ask Wingman something" id="prompt-input" />
+
 				<div id="response" class="pt-4 text-sm">
 				</div>
 

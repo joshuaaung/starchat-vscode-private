@@ -39,11 +39,6 @@
   "resolved" "https://registry.npmjs.org/@eslint/js/-/js-8.38.0.tgz"
   "version" "8.38.0"
 
-"@huggingface/inference@^2.5.2":
-  "integrity" "sha512-v2f4mRgumisTOkelYPCZQRBzh5K0l2vexH8b88CevWv+KgzeC0oPeQhDiSNisCpE6hK+UC6KQ/FxF265kcd6FA=="
-  "resolved" "https://registry.npmjs.org/@huggingface/inference/-/inference-2.5.2.tgz"
-  "version" "2.5.2"
-
 "@humanwhocodes/config-array@^0.11.8":
   "integrity" "sha512-UybHIJzJnR5Qc/MsD9Kr+RpO2h+/P1GhOwdiLPXK5TWk5sgTdu88bTD9UP+CKbPPh5Rni1u0GjAdYQLemG8g+g=="
   "resolved" "https://registry.npmjs.org/@humanwhocodes/config-array/-/config-array-0.11.8.tgz"
