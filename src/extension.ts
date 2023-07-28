@@ -135,13 +135,13 @@ class TextGenerationViewProvider implements vscode.WebviewViewProvider {
     // add an event listener for messages received by the webview
     webviewView.webview.onDidReceiveMessage((data) => {
       switch (data.type) {
-        // case "codeSelected":
-        //   let code = data.value;
-        //   const snippet = new vscode.SnippetString();
-        //   snippet.appendText(code);
-        //   // insert the code as a snippet into the active text editor
-        //   vscode.window.activeTextEditor?.insertSnippet(snippet);
-        //   break;
+        case "codeSelected":
+          let code = data.value;
+          const snippet = new vscode.SnippetString();
+          snippet.appendText(code);
+          // insert the code as a snippet into the active text editor
+          vscode.window.activeTextEditor?.insertSnippet(snippet);
+          break;
         case "prompt":
           this.chat(PromptType.Chat, data.value);
           break;
