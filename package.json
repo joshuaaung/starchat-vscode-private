@@ -149,9 +149,8 @@
           "order": 0
         },
         "wingman.apiUrl": {
-          "markdownDescription": "Wingman Inference API URL. Defaults to [https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream](https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream)",
+          "markdownDescription": "Wingman Inference API URL",
           "type": "string",
-          "default": "https://public-qmp1aphum3plairx.ml-4d924a26-750.apps.apps.prod6.ocbc.com/app/infer_stream",
           "order": 1
         }
       }
